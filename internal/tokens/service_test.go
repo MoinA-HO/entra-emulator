@@ -1173,3 +1173,48 @@ func TestDelegatedTokensCarryUserAppRoles(t *testing.T) {
 		t.Fatalf("unexpected access token roles: %v", at2["roles"])
 	}
 }
+
+// An app set to accessTokenAcceptedVersion 2 gets aud = its client id in
+// delegated access tokens (Entra's v2.0 shape); unset keeps the App ID URI.
+// The ID token audience is the client app either way.
+func TestDelegatedAccessTokenAudienceFollowsAcceptedVersion(t *testing.T) {
+	st, svc, _ := newService(t)
+	app := makeApp(t, st, &store.App{ID: "v2-api-app", AppIDURI: "api://v2-api-app"})
+	user := makeUser(t, st, "user-v2", "Vee", "Two")
+
+	grant := DelegatedGrant{
+		App: app, User: user, Scopes: []string{"openid", "access_as_user"},
+		Resource: app.AppIDURI,
+	}
+	audiences := func() (access, id any) {
+		t.Helper()
+		resp, err := svc.BuildDelegatedResponse(grant)
+		if err != nil {
+			t.Fatal(err)
+		}
+		at, _ := DecodeUnverified(resp.AccessToken)
+		idt, _ := DecodeUnverified(resp.IDToken)
+		return at["aud"], idt["aud"]
+	}
+
+	if access, id := audiences(); access != app.AppIDURI || id != app.ID {
+		t.Fatalf("unset version: access aud = %v (want %s), id aud = %v (want %s)", access, app.AppIDURI, id, app.ID)
+	}
+
+	if err := st.SetAccessTokenAcceptedVersion(app.ID, 2); err != nil {
+		t.Fatal(err)
+	}
+	if access, id := audiences(); access != app.ID || id != app.ID {
+		t.Fatalf("version 2: access aud = %v, id aud = %v, want both %s", access, id, app.ID)
+	}
+
+	if err := st.SetAccessTokenAcceptedVersion(app.ID, 0); err != nil {
+		t.Fatal(err)
+	}
+	if v, err := st.AccessTokenAcceptedVersion(app.ID); err != nil || v != 0 {
+		t.Fatalf("cleared version = %d, %v", v, err)
+	}
+	if access, _ := audiences(); access != app.AppIDURI {
+		t.Fatalf("cleared version: access aud = %v, want %s", access, app.AppIDURI)
+	}
+}

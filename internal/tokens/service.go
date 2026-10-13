@@ -371,11 +371,19 @@ func (s *Service) mintAccessDelegated(g DelegatedGrant, aud string, now int64) (
 	// Access-token optional claims come from the RESOURCE app's config; the
 	// emulator resolves the resource app when the audience is a local app.
 	resourceApp := g.App
+	resourceResolved := false
 	if aud != s.Cfg.GraphResourceID {
 		if byURI, err := s.Store.GetAppByIDURI(aud); err == nil {
-			resourceApp = byURI
+			resourceApp, resourceResolved = byURI, true
 		} else if byID, err := s.Store.GetApp(aud); err == nil {
-			resourceApp = byID
+			resourceApp, resourceResolved = byID, true
+		}
+	}
+	// Entra issues v2.0 tokens for an app set to accept them with
+	// aud = its client id, however the resource was named in the scope.
+	if resourceResolved {
+		if version, err := s.Store.AccessTokenAcceptedVersion(resourceApp.ID); err == nil && version == 2 {
+			claims["aud"] = resourceApp.ID
 		}
 	}
 	// Delegated consent (docs/20-stateful-directory.md): when explicit
