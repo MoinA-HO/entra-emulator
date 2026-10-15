@@ -25,7 +25,7 @@ reference, also browsable as Markdown in [`docs/`](docs/).
 > publicly known seeded users/secrets, self-signed TLS, signing key stored unencrypted.
 > Run it on `localhost` only. Never point real users or secrets at it.
 
-## Fork additions (MoinA-HO)
+## Fork additions
 
 This fork changes three things in the upstream emulator, all to match Entra ID more
 closely: two for apps that authorize users by **app roles**, and one for sign-in requests
