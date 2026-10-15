@@ -27,15 +27,17 @@ reference, also browsable as Markdown in [`docs/`](docs/).
 
 ## Fork additions
 
-This fork changes three things in the upstream emulator, all to match Entra ID more
-closely: two for apps that authorize users by **app roles**, and one for sign-in requests
-that ask only for an API scope:
+This fork changes four things in the upstream emulator, all to match Entra ID more
+closely: two for apps that authorize users by **app roles**, and two so that browser
+clients such as **Swagger UI** can sign in (it asks only for an API scope and sends an
+extra header on its token request):
 
 | Addition | What it does | How to use it |
 |---|---|---|
 | **User app roles in tokens** | App roles assigned to a **user** appear as `roles` in that user's ID token (for the app they signed in to) and delegated access token (for the API being called), as Entra does. Graph access tokens never carry them. | Add a role with `allowedMemberTypes: ["User"]` (`POST /admin/api/apps/{id}/roles`), then assign it: `POST /graph/v1.0/servicePrincipals/{appId}/appRoleAssignedTo` with `{"principalId": "<userId>", "principalType": "User", "resourceId": "<appId>", "appRoleId": "<roleId>"}`. |
 | **`accessTokenAcceptedVersion` per app** | Entra's manifest setting (`api.requestedAccessTokenVersion`). The emulator issues v2.0 tokens; with `2`, access tokens for the app carry `aud` = its client id, as Entra's v2.0 tokens do (Microsoft.Identity.Web expects this by default). Unset or `1` keeps the App ID URI audience, the emulator's original behaviour. | `PATCH /admin/api/apps/{id}` (or `POST /admin/api/apps`) with `{"accessTokenAcceptedVersion": 2}`; `0` clears it. Shown on the app as `accessTokenAcceptedVersion` (`null` when unset). |
 | **`openid` only required for ID tokens** | Upstream refused any authorize request without `openid`. As in Entra, a code-flow request (`response_type=code`) may now ask for resource scopes alone, for example Swagger UI requesting just `api://<app>/access_as_user`; the token response then has an access token and no ID token. Requests that return an ID token (`id_token`, `code id_token`) still need `openid`, and an empty `scope` is still refused (`AADSTS900144`). | Nothing to set: send `response_type=code` with the scopes you need. |
+| **`X-Requested-With` allowed by CORS** | Swagger UI sends `X-Requested-With: XMLHttpRequest` on its token request. Upstream's CORS preflight did not allow that header, so the browser blocked the request and Swagger UI showed only "Failed to fetch". It is now in `Access-Control-Allow-Headers`. The token endpoint still grants CORS only to origins registered as `spa` redirect URIs, as Entra does. | Register the Swagger UI return page (e.g. `https://localhost:5001/swagger/oauth2-redirect.html`) as an `spa` redirect URI on the app. |
 
 Delegated access tokens also carry `name` and `preferred_username`, as Entra's v2.0
 tokens do.

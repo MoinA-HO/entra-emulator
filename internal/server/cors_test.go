@@ -55,10 +55,11 @@ func TestOIDCCORS(t *testing.T) {
 		if got := resp.Header.Get("Access-Control-Allow-Origin"); got != origin {
 			t.Errorf("preflight Access-Control-Allow-Origin = %q", got)
 		}
-		// MSAL.js sends its telemetry headers on the token POST; a preflight
-		// that does not allow them fails the real request.
+		// MSAL.js sends its telemetry headers on the token POST, and Swagger UI
+		// sends X-Requested-With; a preflight that does not allow them fails the
+		// real request.
 		allowed := resp.Header.Get("Access-Control-Allow-Headers")
-		for _, h := range []string{"Content-Type", "x-client-SKU", "client-request-id"} {
+		for _, h := range []string{"Content-Type", "x-client-SKU", "client-request-id", "X-Requested-With"} {
 			if !containsFold(allowed, h) {
 				t.Errorf("preflight does not allow %q (got %q)", h, allowed)
 			}

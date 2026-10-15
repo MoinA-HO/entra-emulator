@@ -71,10 +71,14 @@ func setCORSHeaders(w http.ResponseWriter, origin string) {
 	h.Set("Access-Control-Allow-Origin", origin)
 	h.Add("Vary", "Origin")
 	h.Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	// X-Requested-With: Swagger UI sends it on its token request (OAuth2
+	// authorization code with PKCE), so without it the preflight fails and the
+	// browser reports only "Failed to fetch". Swagger UI works against Entra.
 	h.Set("Access-Control-Allow-Headers",
 		"Authorization, Content-Type, x-client-SKU, x-client-VER, x-client-OS, "+
 			"x-client-CPU, client-request-id, x-client-current-telemetry, "+
-			"x-client-last-telemetry, x-ms-lib-capability, x-app-name, x-app-ver")
+			"x-client-last-telemetry, x-ms-lib-capability, x-app-name, x-app-ver, "+
+			"X-Requested-With")
 	h.Set("Access-Control-Expose-Headers", "client-request-id, x-ms-request-id")
 	h.Set("Access-Control-Max-Age", "86400")
 }
